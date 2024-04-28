@@ -1,0 +1,74 @@
+struct Island {
+	x : u64
+	y : u64 
+}
+
+En traversering over kart + en traversering over island-data:
+- Først iterere over all data én gang for å kartlegge hvilke utvidelser som fins
+- Deretter finne SP
+
+let waterworld: Vec<String> = ... //Map-Data from the file. Each string is a row from the map
+
+let columns_with_islands : Vec<u32> = Vec::new()
+let extra_row_counter = 0;
+
+//Iterate to register islands and register where we must expand
+for (y, row) in waterworld.enumerate()
+
+	let no_islands_row = true;
+	for (x, char) in row.chars().enumerate()
+
+		if char == '#'
+			no_islands_row = false;
+			columns_with_islands.push(x)
+			islands.push(Island{x: x, y: y + extra_row_counter})
+
+	if !no_islands_row
+		extra_row_counter += 1
+
+//Mapping which columns that does not have any islands out from 
+let columns_without_islands : Vec<u32> = get_columns_without_islands()
+
+//Iterate over registered islands to calculate the total length of SP for each pair/permutation
+
+let islands: Vec<Island> = ... //The index of the island is the ID
+let sum_shortest_path = 0;
+
+for (i, island_i) in islands.iter().enumerate() {
+
+	for island_j in islands.iter().skip(i + 1) {
+        	sum_shortest_path += length_shortest_path(island_i, island_j);
+    	}
+}
+
+//Finding the shortest path between two islands
+fn length_shortest_path(second_island, first_island){
+	
+	let extra_distance_x = 0;
+	for column_index in columns_without_islands
+		if column_index < second_island.x || column_index < first_island.x
+			extra_distance_x += 1
+	
+	let steps_x = (second_island.x - first_island.x).abs() + extra_distance_x
+	let steps_y = (second_island.y - first_island.y).abs()
+	return steps_x + steps_y
+}	
+
+//Function that gets the columns with no islands
+fn get_columns_without_islands() -> Vec<u32>{
+
+	let columns_with_islands_set: HashSet<_> = columns_with_islands.iter().cloned().collect();
+	//let columns_wo_islands = (0u32..waterworld[0].len()).filter(|n| columns_with_islands_set.contains(&n)).collect::<Vec<_>>();
+	let columns_wo_islands : Vec<u32> = Vec::new()
+
+	//Looping for the amount of columns
+	for i in 0..waterworld[0].len()
+		if !columns_with_islands_set.contains(&i)
+			columns_wo_islands.push(i)
+}
+
+		
+
+	
+
+	

@@ -1,0 +1,9 @@
+/*.exe
+/*.hi
+/*.o
+/*/*.exe
+/*/*.hi
+/*/*.o
+.exe
+.pdb
+labs/*/target/
