@@ -12,4 +12,5 @@
 - Lab9 -    Rust:      COMPLETED
 - Lab10 -   Rust:      COMPLETED
 - Lab10 -   Haskell:   INCOMPLETE
-- Lab14 -   Rust:      COMPLETED
+- Lab14 p.1 -   Rust:      COMPLETED
+- Lab14 p.2 -   Rust:      COMPLETED
