@@ -52,6 +52,7 @@ processLine line = getScoring (map read (words line))
 
 
 -- Function that will map the retrievePoints function for each number in the list where the first param is the index of the number, the second param is the number in itself, and the third param is the entire number list
+-- We get the scoring for the scoring-numbers. That is why we use drop 3 numbers in the list comprehension
 getScoring :: [Int] -> Int
 getScoring numbers = sum [retrievePoints index x numbers | (index, x) <- zip [0..] (drop 3 numbers)]
 
