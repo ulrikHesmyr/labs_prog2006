@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Lib
+import Data.List (map)
 
 main :: IO ()
 main = do 
@@ -9,4 +10,5 @@ main = do
     -- Getting all transactions as a list of Integers
     let transactions' = [read (removeDot x) :: Integer | x <- lines transactions]
     
-    print transactions'
+    --print $ map addDot $ fourth (getFee (0, 30, transactions', []))
+    print $ getFee (0, 30, transactions', [])
