@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::Instant;
 
 struct Island {
     x: usize,
@@ -9,6 +10,8 @@ const FILE: &str = "data.txt";
 const MAP_EXPANSION : usize = 999999; //Expansion of 1000000 in x and y direction
 
 fn main() {
+    let start_time = Instant::now();
+
     let waterworld : Vec<String> = read_from_file();
 
     let mut islands : Vec<Island> = Vec::new();
@@ -38,6 +41,8 @@ fn main() {
         }
     }
 
+    let duration = start_time.elapsed();
+    println!("Time elapsed in reading data: {:?}", duration.as_nanos());
     println!("Sum of shortest paths: {}", get_total_length_shortest_paths(columns_with_islands, islands, waterworld[0].len()));
 
     	
