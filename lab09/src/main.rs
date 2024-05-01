@@ -40,7 +40,7 @@ impl Default for Error {
 }
 
 trait Semigroup {
-    fn combine(&mut self, other: Error) -> Self;
+    fn combine(&mut self, other: Self) -> Self;
 }
 
 
@@ -116,7 +116,6 @@ fn validate_earth(greenstone_weight: u32) -> Error {
 }
 
 fn validate_water(water_guardian: &str) -> Error {
-    
     check_length_name(&water_guardian, MIN_WATER, MAX_WATER, format!("{}{}", WATER_ID, RANGE_MSG))
     .combine(check_start_w_cap_letter(&water_guardian, format!("{}{}", WATER_ID, CAP_MSG)))
     .combine(check_two_lowercase_a(&water_guardian, format!("{}{}", WATER_ID, MISS_A_MSG)))
@@ -126,14 +125,12 @@ fn validate_water(water_guardian: &str) -> Error {
 fn validate_fire(vulcanic_cave: u32) -> Error {
     check_even(vulcanic_cave, format!("{}{}", FIRE_ID, EVEN_MSG))
     .combine(check_range(MIN_FIRE, MAX_FIRE, vulcanic_cave, format!("{}{}", FIRE_ID, RANGE_MSG)))
-    
 }
 
 fn validate_air(sky_riddle: &str) -> Error {
     check_ends_w_dot(&sky_riddle, format!("{}{}", AIR_ID, MISS_DOT_MSG))
     .combine(check_count_vowels(&sky_riddle, format!("{}{}", AIR_ID, EVEN_MSG)))
     .combine(check_start_w_cap_letter(&sky_riddle, format!("{}{}", AIR_ID, CAP_MSG)))
-    
 }
 
 fn check_range(min: u32, max: u32, value: u32, errstr: String) -> Error {
