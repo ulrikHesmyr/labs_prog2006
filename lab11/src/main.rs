@@ -12,10 +12,10 @@ fn main(){
         let mut digits : Vec<char> = Vec::new(); //First and last will be sat together to the 2-digit value
 
 	    for (index, letter) in inscription.chars().enumerate() {
-	    	if letter.is_digit(10){
+	    	if letter.is_digit(10){ //Check if the letter is a digit
 	    		digits.push(letter);
 	    	} else {
-	    		if "otfsen".contains(letter) {
+	    		if "otfsen".contains(letter) { //Check if the letter is relevant to our digit-words, so o for one, t for two and three, f for four and five, s for six and seven, e for eight and n for nine
 	    			match word_digit(letter, &inscription, index, &length) {
 	    				Ok(digit) => {
 	    					digits.push(digit);
@@ -35,7 +35,6 @@ fn main(){
     }
 
     print!("New bearing component of the BPROG Voyager: {}", bearing_component_sum%360);
-    //bearing component = sum % 
 }
 
 fn word_digit(letter : char, inscripton : &String, index : usize, length : &usize) -> Result<char, ()>{
