@@ -45,12 +45,7 @@ fn main(){
     }
 }
 
-fn read_line() -> Vec<Token> {
-    let mut input = String::new();
-    match io::stdin().read_line(&mut input) {
-        Ok(_) => tokenize(input)
-    }
-}
+
 
 
 fn tokenize(line : String) -> (Option<Variable>, Vec<Token>) {
@@ -58,12 +53,14 @@ fn tokenize(line : String) -> (Option<Variable>, Vec<Token>) {
     let statement : Vec<&str> = line.split(" ").rev().collect(); //.rev()?
     //+ 2 1
     for expression in statement
-        identify(expression)
+        if let operation = Some(operator(expression)) {
+
+        }
 }
 
 //Checks whether we have a operator/function or a Datatype
 fn identify(expression : &str) {
-    let o = Some(operator(expression));
+    let o = Some();
     let d = Some(datatype(expression));
 }
 
