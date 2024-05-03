@@ -134,17 +134,17 @@ fn aliquot(n: u128) -> u128 {
 }
 
 //Basic aliquot
-// fn aliquot(n: u128) -> u128 {
-//     let mut sum = 0;
+fn aliquot_(n: u128) -> u128 {
+    let mut sum = 0;
 
-//     for i in 1..n {
-//         if n % i == 0 {
-//             sum += i;
-//         }
-//     }
+    for i in 1..n {
+        if n % i == 0 {
+            sum += i;
+        }
+    }
 
-//     return sum;
-// }
+    return sum;
+}
 
 // Implementation of the number type.
 #[derive(Debug, PartialEq, Eq)]

@@ -32,11 +32,7 @@ fn main(){
         let two_digit : String = digits[0].to_string() + &digits[digits.len() - 1].to_string();
         bearing_component_sum += two_digit.parse::<u32>().unwrap();
 
-        
-	
     }
-    
-
 
     print!("New bearing component of the BPROG Voyager: {}", bearing_component_sum%360);
     //bearing component = sum % 
@@ -65,7 +61,7 @@ fn word_digit(letter : char, inscripton : &String, index : usize, length : &usiz
     }
 
 	for (word, digit) in checks {
-		let range = (index + word.len()) % (length+1);
+		let range = (index + word.len()) % (length+1); //Have to be length + 1 to account for words at the end of the String because the modulo operator will return 0 
 		if range > index {
 			if inscripton[index..range] == *word {
 				return Ok(digit)
