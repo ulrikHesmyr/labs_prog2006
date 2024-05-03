@@ -1,3 +1,5 @@
+use std::io;
+
 #[derive(Debug)]
 enum ProgramError {
     InvalidOperation,
@@ -10,28 +12,47 @@ enum Datatype {
 }
 
 fn main() {
-    let my_string = String::from("2 10 /");
-    let tokens: Vec<_> = my_string.trim().split(' ').rev().collect();
+    //let my_string = String::from("20 2 / 3.0 4.0 * +");
+    let my_string = read_line();
+    let mut tokens: Vec<_> = my_string.trim().split(' ').rev().collect();
     
-    let mut arguments : Vec<Datatype> = Vec::new();
-    let mut operation : String = String::new();
+    let mut stack : Vec<Datatype> = Vec::new();
 
-    for token in tokens.iter() {
-        println!("{}", token);
-        match datatype(token) {
-            Some(datatype) => arguments.push(datatype),
-            None => operation = token.to_string(),
+    while !tokens.is_empty() {
+        let token = tokens.pop().unwrap();
+        if let Some(datatype) = datatype(token) {
+            stack.push(datatype);
+        } else {
+            //operation = token.to_string();
+            let a = stack.pop().unwrap();
+            let b = stack.pop().unwrap();
+            let result : Result<Datatype, ProgramError> = match token {
+                "+" => add(a, b),
+                "-" => subtract(a, b),
+                "*" => multiply(a, b),
+                "/" => divide(a, b),
+                _ => Err(ProgramError::InvalidOperation),
+            };
+
+            match result {
+                Ok(value) => stack.push(value),
+                Err(e) => println!("Error: {:?}", e),
+            }
         }
     }
 
-    let result : Result<Datatype, ProgramError> = match operation.as_str() {
-        "+" => add(arguments[0], arguments[1]),
-        "-" => subtract(arguments[0], arguments[1]),
-        "*" => multiply(arguments[0], arguments[1]),
-        "/" => divide(arguments[0], arguments[1]),
-        _ => Err(ProgramError::InvalidOperation),
-    };
+    println!("{:?}", stack);
+
     
+    
+}
+
+fn read_line() -> String {
+    let mut input = String::new();
+    match io::stdin().read_line(&mut input) {
+        Ok(_) => input,
+        Err(error) => panic!("Error: {}", error), 
+    }
 }
 
 fn datatype(token: &str) -> Option<Datatype> {
@@ -75,8 +96,8 @@ fn multiply(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
 
 fn divide(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
-        (Datatype::Int(a), Datatype::Int(b)) => Ok(Datatype::Int(a / b)),
-        (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Float(a / b)),
+        (Datatype::Int(a), Datatype::Int(b)) => Ok(Datatype::Float((b as f32) / (a as f32))),
+        (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Float(b / a)),
         (Datatype::Int(_a), Datatype::Float(_b)) => Err(ProgramError::InvalidOperation),
         (Datatype::Float(_a), Datatype::Int(_b)) => Err(ProgramError::InvalidOperation),
     };
