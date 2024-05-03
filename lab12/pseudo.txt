@@ -1,31 +1,20 @@
 use std::io;
+use std::any::Any;
 
 enum Datatype {
-    String,
-    List,
-    Codeblock,
-}
-
-enum Token {
-    Operator(Operator),
-    Float(f64),
-    Int(i64),
     String(String),
+    Int(i64),
+    List(Vec<Datatype>),
+    Float(f64),
 }
 
+//Arithmetic and logical operators
 enum Operator {
     Add,
     Subtract,
     Divide,
     Multiply,
 }
-
-impl Operator {
-    fn add(&self, n : Token::Int, m : Token::Int) {
-        n + m
-    }
-}
-
 
 struct Program {
     statements : HashMap<String, Vec<Token>>
@@ -37,59 +26,55 @@ impl Program {
             self.statements.put(var, argument); //Use put because if we were to redeclare a variable, it will be overwritten 
         } 
 
-        self.validate(argument);
+        self.evaluate(argument);
     }
 
-    //
-    fn validate()
+    fn evaluate()
+
+    fn print()
 }
 
 trait Arithmetic {
     fn add()
 }
 
-trait Stack {
-    fn push_back(&mut self, element : Any)
-    fn pop_back(&mut self) -> Any
-}
-
-impl Stack for Vec {
-    fn push_back(&mut self, element : Any) {
-        self.push(element);
-    }
-
-    fn pop_back(&mut self) -> Any {
-        self.truncate(self.len()-1);
-    }
-
-}
 
 fn main(){
-    //Read a line of input from stdin
-    let line = read_line()
+    while 1 {
+        read_line()
+    }
 }
 
 fn read_line() -> Vec<Token> {
     let mut input = String::new();
     match io::stdin().read_line(&mut input) {
-        Ok(n)
+        Ok(_) => tokenize(input)
     }
 }
 
 
 fn tokenize(line : String) -> (Option<Variable>, Vec<Token>) {
-    let words : Vec<&str> = line.split(" ").rev().collect();
-    for word in words 
+    //1 2 +
+    let statement : Vec<&str> = line.split(" ").rev().collect(); //.rev()?
+    //+ 2 1
+    for expression in statement
+        identify(expression)
 }
 
-fn token(t : String) -> Token {
+//Checks whether we have a operator/function or a Datatype
+fn identify(expression : &str) {
+    let o = Some(operator(expression));
+    let d = Some(datatype(expression));
+}
+
+fn datatype(t : String) -> Option<Datatype> {
     
     if t.parse::<i64>().is_ok() {
-        return Token::Int(t.parse::<i64>())
+        return Datatype::Int(t.parse::<i64>())
     } else if t.parse::<f64>.is_ok() {
-        return Token::Float(t.parse::<f64>())
-    } else if let o = Some(operator(t)) {
-        return Token::Operator(o)
+        return Datatype::Float(t.parse::<f64>())
+    } else if t == "]" {
+        return Datatype::List(Vec::new())
     } else {
         return Token::String(t)
     }
