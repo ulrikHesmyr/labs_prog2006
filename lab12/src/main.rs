@@ -1,15 +1,18 @@
 use std::io;
+use std::fmt::Write;
 
 #[derive(Debug)]
 enum ProgramError {
     InvalidOperation,
+    IncompleteList,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Datatype {
     Int(i128),
     Float(f64),
     Boolean(bool),
+    List(Vec<Datatype>),
 }
 
 fn main() {
@@ -34,9 +37,21 @@ fn interpreter(line : &String) -> String{
 
     while !tokens.is_empty() {
         let token = tokens.pop().unwrap();
-        if let Some(datatype) = datatype(token) {
-            stack.push(datatype);
+        if let Some(dt) = datatype(token) {
+            //Check if it is a list
+            if let Datatype::List(_) = dt {
+                let list_result = match list(&mut tokens) {
+                    Ok(value) => value,
+                    Err(e) => return format!("{:?}", e),
+                };
+                
+                stack.push(list_result);
+            } else {
+                stack.push(dt);
+            }
         } else {
+            
+            //Checking the input for operators and function-calls
             let result : Result<Datatype, ProgramError> = match token {
                 "+" => add(stack.pop().unwrap(), stack.pop().unwrap()),
                 "-" => subtract(stack.pop().unwrap(), stack.pop().unwrap()),
@@ -47,6 +62,7 @@ fn interpreter(line : &String) -> String{
                 "not" => not(stack.pop().unwrap()),
                 "<" => less_than(stack.pop().unwrap(), stack.pop().unwrap()),
                 ">" => larger_than(stack.pop().unwrap(), stack.pop().unwrap()),
+                
                 _ => Err(ProgramError::InvalidOperation),
             };
 
@@ -63,13 +79,18 @@ fn interpreter(line : &String) -> String{
         println!("{:?}", stack);
     }
 
-    let stack_single_value = match stack.pop().unwrap() {
-        Datatype::Float(value) => format!("{:?}", value),
-        Datatype::Int(value) => format!("{}", value),
-        Datatype::Boolean(value) => format!("{}", if value {"True"} else {"False"}),
-    };
+    let stack_single_value = format_stack_item(stack.pop().unwrap());
     
     return stack_single_value
+}
+
+fn format_stack_item(stack_item : Datatype) -> String {
+    match stack_item {
+        Datatype::Int(value) => format!("{}", value),
+        Datatype::Float(value) => format!("{:?}", value),
+        Datatype::Boolean(value) => format!("{}", if value { "True" } else { "False" }),
+        Datatype::List(list) => format!("[{}]", format_list(&list)),
+    }
 }
 
 fn read_line() -> String {
@@ -82,7 +103,9 @@ fn read_line() -> String {
 
 fn datatype(token: &str) -> Option<Datatype> {
 
-    if token.parse::<f64>().is_ok() && token.contains('.') {
+    if token == "[" {
+        return Some(Datatype::List(Vec::new()));
+    } else if token.parse::<f64>().is_ok() && token.contains('.') {
         return Some(Datatype::Float(token.parse::<f64>().unwrap()));
     } else if token.parse::<i128>().is_ok() {
         return Some(Datatype::Int(token.parse::<i128>().unwrap()));
@@ -91,6 +114,37 @@ fn datatype(token: &str) -> Option<Datatype> {
         return Some(Datatype::Boolean(bool_value.parse::<bool>().unwrap()));
     }
     return None
+}
+
+fn list(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+    let mut list_ : Vec<Datatype> = Vec::new();
+    let mut token = "";
+
+    //Looping over all the list elements till the closing bracket
+    while token != "]" {
+
+        //If the token is a list, call the list function recursively
+        token = tokens.pop().unwrap();
+        if let Some(d) = datatype(token) {
+            if let Datatype::List(_) = d {
+                let result = match list(tokens) {
+                    Ok(value) => value,
+                    Err(e) => return Err(e),
+                
+                };
+                
+                list_.push(result);
+            } else {
+                list_.push(d); 
+            }
+        } else {
+            if token != "]" {
+                return Err(ProgramError::IncompleteList)
+            }
+            
+        }
+    }
+    Ok(Datatype::List(list_))
 }
 
 fn larger_than(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
@@ -183,7 +237,17 @@ fn divide(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     result
 }
 
-
+fn format_list(list : &Vec<Datatype>) -> String {
+    let mut list_str = String::new();
+    for item in list.iter() {
+        if let Datatype::List(f) = item {
+            write!(list_str, "[{}]", format_list(f)).unwrap();
+        } else {
+            write!(list_str, "[{}]", format_stack_item(item.clone())).unwrap();
+        }
+    }
+    return list_str
+}
 
 fn tests() {
     let testings: Vec<(String, String)> = vec![
