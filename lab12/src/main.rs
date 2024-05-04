@@ -6,6 +6,7 @@ enum ProgramError {
     InvalidOperation,
     IncompleteList,
     IncompleteString,
+    StackEmpty,
 }
 
 #[derive(Debug, Clone)]
@@ -23,11 +24,10 @@ fn main() {
         let result = interpreter(&read_line());
         println!("Running tests...");
         tests();
-        println!("{}", result);
     }
 }
 
-fn interpreter(line : &String) -> String{
+fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
     let mut tokens: Vec<_> = line.trim().split(' ').rev().collect();
     
     let mut stack : Vec<Datatype> = Vec::new();
@@ -71,6 +71,13 @@ fn interpreter(line : &String) -> String{
                     "words" => Some(words(stack.pop().unwrap())),
                     "parseInteger" => Some(parse_integer(stack.pop().unwrap())),
                     "parseFloat" => Some(parse_float(stack.pop().unwrap())),
+                    "empty" => Some(empty(stack.pop().unwrap())),
+                    "head" => Some(head(stack.pop().unwrap())),
+                    "tail" => Some(tail(stack.pop().unwrap())),
+                    "cons" => Some(cons(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "append" => Some(append(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "exec" => Some(exec(stack.pop().unwrap())),
+
 
 
 
@@ -88,18 +95,24 @@ fn interpreter(line : &String) -> String{
         } 
     }
 
-    // if stack.len() != 1 {
-    //     println!("Stack does not have a single value at the end.");
-    // } else {
-    //     println!("{:?}", stack);
-    // }
     println!("{:?}", stack);
-
-    let stack_single_value = format_stack_item(stack.pop().unwrap());
+    if stack.len() == 0 {
+        println!("Stack does not have a single value at the end");
+        return Err(ProgramError::StackEmpty)
+    } else {
+        return Ok(stack.pop().unwrap())
+    }
     
-    return stack_single_value
 }
 
+
+fn exec(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::Code(code) => interpreter(&code),
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
 
 fn read_line() -> String {
     let mut input = String::new();
@@ -111,25 +124,36 @@ fn read_line() -> String {
 
 fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
 
+    //Datatype::Code
     if token == "{" {
         let code_result = match code(tokens) {
             Ok(value) => value,
             Err(e) => return None//return format!("{:?}", e),
         };
         return Some(code_result);
+
+        //Datatype::List
     } else if token == "[" {
         let list_result = match list(token, tokens) {
             Ok(value) => value,
             Err(e) => return None//return format!("{:?}", e),
         };
         return Some(list_result);
+
+        //Datatype::Float
     } else if token.parse::<f64>().is_ok() && token.contains('.') {
         return Some(Datatype::Float(token.parse::<f64>().unwrap()));
+
+        //Datatype::Int
     } else if token.parse::<i128>().is_ok() {
         return Some(Datatype::Int(token.parse::<i128>().unwrap()));
+
+        //Datatype::Boolean
     } else if token == "False" || token == "True" {
         let bool_value = token.to_ascii_lowercase();
         return Some(Datatype::Boolean(bool_value.parse::<bool>().unwrap()));
+
+        //Datatype::String
     } else if token == "\"" {
         let string_result = match string(tokens) {
             Ok(value) => value,
@@ -161,29 +185,89 @@ fn list(token: &str, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
 
 fn string(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
     let mut string_ = String::new();
-    let mut token = "";
+    let mut token = tokens.pop().unwrap();
     while token != "\"" {
         string_.push_str(format!(" {}", token).as_str());
-        token = tokens.pop().unwrap();
         if tokens.is_empty() {
             return Err(ProgramError::IncompleteString)
         }
+        token = tokens.pop().unwrap();
     }
     Ok(Datatype::String(string_.trim().to_string()))
 }
 
 fn code(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
     let mut code_ = String::new();
-    let mut token = "";
+    let mut token = tokens.pop().unwrap();
     while token != "}" {
         code_.push_str(format!(" {}", token).as_str());
-        token = tokens.pop().unwrap();
         if tokens.is_empty() {
             return Err(ProgramError::IncompleteString)
         }
+        token = tokens.pop().unwrap();
     }
     Ok(Datatype::Code(code_.trim().to_string()))
 
+}
+
+fn empty(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::List(list) => Ok(Datatype::Boolean(list.is_empty())),
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
+fn append(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match (a, b) {
+        (Datatype::List(mut list), Datatype::List(mut list2)) => {
+            list2.append(&mut list);
+            Ok(Datatype::List(list2))
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
+fn cons(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match (a, b) {
+        (Datatype::List(mut list), item) => {
+            list.insert(0, item);
+            Ok(Datatype::List(list))
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
+fn tail(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::List(list) => {
+            if list.is_empty() {
+                Err(ProgramError::InvalidOperation)
+            } else {
+                let mut new_list = list.clone();
+                new_list.remove(0);
+                Ok(Datatype::List(new_list))
+            }
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
+fn head(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::List(list) => {
+            if list.is_empty() {
+                Err(ProgramError::InvalidOperation)
+            } else {
+                Ok(list[0].clone())
+            }
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
 }
 
 fn length(a : Datatype) -> Result<Datatype, ProgramError> {
@@ -528,7 +612,10 @@ fn tests() {
 
     
     for (index, (input, output)) in testings.iter().enumerate() {
-        let result = interpreter(&input);
+        let result = match interpreter(&input){
+            Ok(value) => format_stack_item(value),
+            Err(e) => format!("{:?}", e),
+        };
         assert!(result == *output, "FAIL on test {}\n- test: {}\n- result: {}\n- expected: {}", index, input, result, output);
     }
 
