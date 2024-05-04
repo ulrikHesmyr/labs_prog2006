@@ -1,88 +1,12 @@
-use std::io;
-use std::any::Any;
-
-enum Datatype {
-    String(String),
-    Int(i64),
-    List(Vec<Datatype>),
-    Float(f64),
-}
-
-//Arithmetic and logical operators
-enum Operator {
-    Add,
-    Subtract,
-    Divide,
-    Multiply,
-}
-
-struct Program {
-    statements : HashMap<String, Vec<Token>>
-}
-
-impl Program {
-    fn interpret(&mut self, variable : Option<String>, argument : Vec<Token>){
-        if let var = Some(variable) {
-            self.statements.put(var, argument); //Use put because if we were to redeclare a variable, it will be overwritten 
-        } 
-
-        self.evaluate(argument);
-    }
-
-    fn evaluate()
-
-    fn print()
-}
-
-trait Arithmetic {
-    fn add()
-}
-
-
-fn main(){
-    while 1 {
-        read_line()
-    }
-}
+//stack = [List(...), Code("10 *")]
 
 
 
+[ 1 2 3 ] map { 10 * }
 
-fn tokenize(line : String) -> (Option<Variable>, Vec<Token>) {
-    //1 2 +
-    let statement : Vec<&str> = line.split(" ").rev().collect(); //.rev()?
-    //+ 2 1
-    for expression in statement
-        if let operation = Some(operator(expression)) {
-
-        }
-}
-
-//Checks whether we have a operator/function or a Datatype
-fn identify(expression : &str) {
-    let o = Some();
-    let d = Some(datatype(expression));
-}
-
-fn datatype(t : String) -> Option<Datatype> {
-    
-    if t.parse::<i64>().is_ok() {
-        return Datatype::Int(t.parse::<i64>())
-    } else if t.parse::<f64>.is_ok() {
-        return Datatype::Float(t.parse::<f64>())
-    } else if t == "]" {
-        return Datatype::List(Vec::new())
-    } else {
-        return Token::String(t)
-    }
-}
-
-fn operator(t : String) -> Option<Operator> {
-    match t {
-        "+" => Some(Operator::Add),
-        "-" => Some(Operator::Subtract),
-        "/" => Some(Operator::Divide),
-        "*" => Some(Operator::Multiply),
-        _ => None
-    }
+"map" => {
+    let code_block = tokens.pop().unwrap();
+    let code = code_block.split(' ').collect();
+    let list = stack.pop().unwrap();
+    list.map(i => exec(format!("{} {} * ", code_block[0], i, code_block[1])))
 }

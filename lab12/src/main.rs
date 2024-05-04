@@ -39,7 +39,14 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
             None => {
                  //Checking the input for operators and function-calls, returns Some, if there are anything to be pushed back in the stack
                 let result : Option<Result<Datatype, ProgramError>> = match token {
-                    "+" => Some(add(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "+" => {
+                        // if stack.len() == 1 {
+                        //     return Some(unary_add(stack.pop().unwrap()))
+                        // } else {
+                        //     Some(binary_add(stack.pop().unwrap(), stack.pop().unwrap()))
+                        // }
+                        Some(binary_add(stack.pop().unwrap(), stack.pop().unwrap()))
+                    },
                     "-" => Some(subtract(stack.pop().unwrap(), stack.pop().unwrap())),
                     "*" => Some(multiply(stack.pop().unwrap(), stack.pop().unwrap())),
                     "/" => Some(divide(stack.pop().unwrap(), stack.pop().unwrap())),
@@ -77,6 +84,7 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
                     "cons" => Some(cons(stack.pop().unwrap(), stack.pop().unwrap())),
                     "append" => Some(append(stack.pop().unwrap(), stack.pop().unwrap())),
                     "exec" => Some(exec(stack.pop().unwrap())),
+                    "map" => Some(map(stack.pop().unwrap(), &mut tokens)),
 
 
 
@@ -112,6 +120,29 @@ fn exec(a : Datatype) -> Result<Datatype, ProgramError> {
         _ => Err(ProgramError::InvalidOperation),
     };
     result
+}
+
+fn map(list : Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>{
+    if let Some(code_block) = datatype(tokens.pop().unwrap(), tokens) {
+        match list {
+            Datatype::List(list) => {
+                let mut new_list : Vec<Datatype> = Vec::new();
+                for item in list {
+                    let formatted_string = format!("{} {}", format_stack_item(item), format_stack_item(code_block.clone()));
+                    let result = exec(Datatype::Code(formatted_string));
+                    match result {
+                        Ok(value) => new_list.push(value),
+                        Err(e) => return Err(e),
+                    }
+                }
+                
+                Ok(Datatype::List(new_list))
+            },
+            _ => Err(ProgramError::InvalidOperation),
+        }
+    } else {
+        Err(ProgramError::InvalidOperation)
+    }
 }
 
 fn read_line() -> String {
@@ -410,7 +441,16 @@ fn not(a : Datatype) -> Result<Datatype, ProgramError> {
     result
 }
 
-fn add(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
+fn unary_add(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::Int(a) => Ok(Datatype::Int(a)),
+        Datatype::Float(a) => Ok(Datatype::Float(a)),
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
+fn binary_add(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
         (Datatype::Int(a), Datatype::Int(b)) => Ok(Datatype::Int(a + b)),
         (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Float(a + b)),
@@ -462,7 +502,7 @@ fn format_stack_item(stack_item : Datatype) -> String {
         Datatype::Boolean(value) => format!("{}", if value { "True" } else { "False" }),
         Datatype::List(list) => format!("[{}]", format_list(&list)),
         Datatype::String(value) => format!("{:?}", value),
-        Datatype::Code(value) => format!("{:?}", value),
+        Datatype::Code(value) => format!("{}", value),
     }
 }
 
