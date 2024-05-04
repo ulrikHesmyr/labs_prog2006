@@ -1,12 +1,25 @@
-//stack = [List(...), Code("10 *")]
+Todo:
+- Endre error meldinger til slutt
+- Rydde i koden
 
+"if" => {
+    let true = tokens.pop().unwrap()
+    let false = tokens.pop().unwrap()
 
+    match stack.pop().unwrap() {
+        Datatype::Boolen(boolean) => {
+            if boolean {
+                expression = true;
+            } else {
+                expression = false;
+            }
 
-[ 1 2 3 ] map { 10 * }
-
-"map" => {
-    let code_block = tokens.pop().unwrap();
-    let code = code_block.split(' ').collect();
-    let list = stack.pop().unwrap();
-    list.map(i => exec(format!("{} {} * ", code_block[0], i, code_block[1])))
+            match datatype(expression) {
+                Some(dt) => stack.push(dt),
+                None => Err(ProgramError::IncompleteQuotation)
+            }
+        },
+        _ => Err(ProgramError::ExpectedBool)
+    }
 }
+
