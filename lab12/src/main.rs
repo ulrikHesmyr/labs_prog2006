@@ -5,6 +5,7 @@ use std::fmt::Write;
 enum ProgramError {
     InvalidOperation,
     IncompleteList,
+    IncompleteString,
 }
 
 #[derive(Debug, Clone)]
@@ -14,21 +15,16 @@ enum Datatype {
     Boolean(bool),
     List(Vec<Datatype>),
     String(String),
+    Code(String),
 }
 
 fn main() {
-    let mut quit = false;
-    while !quit {
-        interpreter(&read_line());
-        println!("Continue? (y/n)");
-        let input = read_line();
-        if input.trim() == "n" {
-            quit = true;
-        }
+    loop { 
+        let result = interpreter(&read_line());
+        println!("Running tests...");
+        tests();
+        println!("{}", result);
     }
-
-    println!("Running tests...");
-    tests();
 }
 
 fn interpreter(line : &String) -> String{
@@ -38,86 +34,66 @@ fn interpreter(line : &String) -> String{
 
     while !tokens.is_empty() {
         let token = tokens.pop().unwrap();
-        if let Some(dt) = datatype(token) {
-            //Check if it is a list
-            if let Datatype::List(_) = dt {
-                let list_result = match list(&mut tokens) {
-                    Ok(value) => value,
-                    Err(e) => return format!("{:?}", e),
+        match datatype(token, &mut tokens) {
+            Some(value) => stack.push(value),
+            None => {
+                 //Checking the input for operators and function-calls, returns Some, if there are anything to be pushed back in the stack
+                let result : Option<Result<Datatype, ProgramError>> = match token {
+                    "+" => Some(add(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "-" => Some(subtract(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "*" => Some(multiply(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "/" => Some(divide(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "&&" => Some(and(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "||" => Some(or(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "not" => Some(not(stack.pop().unwrap())),
+                    "<" => Some(less_than(stack.pop().unwrap(), stack.pop().unwrap())),
+                    ">" => Some(larger_than(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "div" => Some(div(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "==" => Some(equal(stack.pop().unwrap(), stack.pop().unwrap())),
+                    "swap" => {
+                        let a = stack.pop().unwrap();
+                        let b = stack.pop().unwrap();
+                        stack.push(a);
+                        stack.push(b);
+                        None
+                    },
+                    "pop" => {
+                        stack.pop();
+                        None
+                    },
+                    "dup" => {
+                        let a = stack.pop().unwrap();
+                        stack.push(a.clone());
+                        stack.push(a);
+                        None
+                    },
+                    "length" => Some(length(stack.pop().unwrap())),
+                    "words" => Some(words(stack.pop().unwrap())),
+                    "parseInteger" => Some(parse_integer(stack.pop().unwrap())),
+                    "parseFloat" => Some(parse_float(stack.pop().unwrap())),
+
+
+
+
+
+                    _ => Some(Err(ProgramError::InvalidOperation)),
                 };
-                
-                stack.push(list_result);
-            } else if let Datatype::String(_) = dt {
-                let mut string = String::new();
-                let mut token = tokens.pop().unwrap();
-                while token != "\"" {
-                    string.push_str(format!(" {}", token).as_str());
-                    token = tokens.pop().unwrap();
+
+                match result {
+                    Some(Ok(value)) => stack.push(value),
+                    Some(Err(e)) => println!("Error: {:?}", e),
+                    None => (),
                 }
-                stack.push(Datatype::String(string.trim().to_string()));
-            } else {
-                stack.push(dt);
-            }
-        } else {
-            
-            //Checking the input for operators and function-calls, returns Some, if there are anything to be pushed back in the stack
-            let result : Option<Result<Datatype, ProgramError>> = match token {
-                "+" => Some(add(stack.pop().unwrap(), stack.pop().unwrap())),
-                "-" => Some(subtract(stack.pop().unwrap(), stack.pop().unwrap())),
-                "*" => Some(multiply(stack.pop().unwrap(), stack.pop().unwrap())),
-                "/" => Some(divide(stack.pop().unwrap(), stack.pop().unwrap())),
-                "&&" => Some(and(stack.pop().unwrap(), stack.pop().unwrap())),
-                "||" => Some(or(stack.pop().unwrap(), stack.pop().unwrap())),
-                "not" => Some(not(stack.pop().unwrap())),
-                "<" => Some(less_than(stack.pop().unwrap(), stack.pop().unwrap())),
-                ">" => Some(larger_than(stack.pop().unwrap(), stack.pop().unwrap())),
-                "div" => Some(div(stack.pop().unwrap(), stack.pop().unwrap())),
-                "==" => Some(equal(stack.pop().unwrap(), stack.pop().unwrap())),
-                "swap" => {
-                    let a = stack.pop().unwrap();
-                    let b = stack.pop().unwrap();
-                    stack.push(a);
-                    stack.push(b);
-                    None
-                },
-                "pop" => {
-                    stack.pop();
-                    None
-                },
-                "dup" => {
-                    let a = stack.pop().unwrap();
-                    stack.push(a.clone());
-                    stack.push(a);
-                    None
-                },
-                "length" => {
-                    let a = stack.pop().unwrap();
-                    match a {
-                        Datatype::List(list) => Some(Ok(Datatype::Int(list.len() as i128))),
-                        Datatype::String(string) => Some(Ok(Datatype::Int(string.len() as i128))),
-                        _ => Some(Err(ProgramError::InvalidOperation)),
-                    }
-                },
-                
-                
-
-                
-                _ => Some(Err(ProgramError::InvalidOperation)),
-            };
-
-            match result {
-                Some(Ok(value)) => stack.push(value),
-                Some(Err(e)) => println!("Error: {:?}", e),
-                None => (),
-            }
-        }
+            },
+        } 
     }
 
-    if stack.len() != 1 {
-        println!("Stack does not have a single value at the end.");
-    } else {
-        println!("{:?}", stack);
-    }
+    // if stack.len() != 1 {
+    //     println!("Stack does not have a single value at the end.");
+    // } else {
+    //     println!("{:?}", stack);
+    // }
+    println!("{:?}", stack);
 
     let stack_single_value = format_stack_item(stack.pop().unwrap());
     
@@ -133,10 +109,20 @@ fn read_line() -> String {
     }
 }
 
-fn datatype(token: &str) -> Option<Datatype> {
+fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
 
-    if token == "[" {
-        return Some(Datatype::List(Vec::new()));
+    if token == "{" {
+        let code_result = match code(tokens) {
+            Ok(value) => value,
+            Err(e) => return None//return format!("{:?}", e),
+        };
+        return Some(code_result);
+    } else if token == "[" {
+        let list_result = match list(token, tokens) {
+            Ok(value) => value,
+            Err(e) => return None//return format!("{:?}", e),
+        };
+        return Some(list_result);
     } else if token.parse::<f64>().is_ok() && token.contains('.') {
         return Some(Datatype::Float(token.parse::<f64>().unwrap()));
     } else if token.parse::<i128>().is_ok() {
@@ -145,41 +131,105 @@ fn datatype(token: &str) -> Option<Datatype> {
         let bool_value = token.to_ascii_lowercase();
         return Some(Datatype::Boolean(bool_value.parse::<bool>().unwrap()));
     } else if token == "\"" {
-        return Some(Datatype::String(String::new()));
+        let string_result = match string(tokens) {
+            Ok(value) => value,
+            Err(e) => return None //return format!("{:?}", e),
+        };
+        return Some(string_result);
     }
     return None
 }
 
-fn list(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+fn list(token: &str, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
     let mut list_ : Vec<Datatype> = Vec::new();
-    let mut token = "";
 
     //Looping over all the list elements till the closing bracket
     while token != "]" {
 
         //If the token is a list, call the list function recursively
-        token = tokens.pop().unwrap();
-        if let Some(d) = datatype(token) {
-            if let Datatype::List(_) = d {
-                let result = match list(tokens) {
-                    Ok(value) => value,
-                    Err(e) => return Err(e),
-                
-                };
-                
-                list_.push(result);
-            } else {
-                list_.push(d); 
-            }
-        } else {
-            if token != "]" {
-                return Err(ProgramError::IncompleteList)
-            }
-            
+        let new_token = tokens.pop().unwrap();
+        if new_token == "]" {
+            return Ok(Datatype::List(list_));
+        }
+        match datatype(new_token, tokens) {
+            Some(value) => list_.push(value),
+            None => return Err(ProgramError::IncompleteList),
         }
     }
     Ok(Datatype::List(list_))
 }
+
+fn string(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+    let mut string_ = String::new();
+    let mut token = "";
+    while token != "\"" {
+        string_.push_str(format!(" {}", token).as_str());
+        token = tokens.pop().unwrap();
+        if tokens.is_empty() {
+            return Err(ProgramError::IncompleteString)
+        }
+    }
+    Ok(Datatype::String(string_.trim().to_string()))
+}
+
+fn code(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+    let mut code_ = String::new();
+    let mut token = "";
+    while token != "}" {
+        code_.push_str(format!(" {}", token).as_str());
+        token = tokens.pop().unwrap();
+        if tokens.is_empty() {
+            return Err(ProgramError::IncompleteString)
+        }
+    }
+    Ok(Datatype::Code(code_.trim().to_string()))
+
+}
+
+fn length(a : Datatype) -> Result<Datatype, ProgramError> {
+    match a {
+        Datatype::List(list) => Ok(Datatype::Int(list.len() as i128)),
+        Datatype::String(string) => Ok(Datatype::Int(string.len() as i128)),
+        Datatype::Code(string) => Ok(Datatype::Int(string.split(' ').collect::<Vec<&str>>().len() as i128)),
+        _ => Err(ProgramError::InvalidOperation),
+    }
+}
+
+fn parse_integer(a : Datatype) -> Result<Datatype, ProgramError> {
+    match a {
+        Datatype::String(value) => {
+            match value.parse::<i128>() {
+                Ok(value) => Ok(Datatype::Int(value)),
+                Err(_) => Err(ProgramError::InvalidOperation),
+            }
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    }
+}
+
+fn parse_float(a : Datatype) -> Result<Datatype, ProgramError> {
+    match a {
+        Datatype::String(value) => {
+            match value.parse::<f64>() {
+                Ok(value) => Ok(Datatype::Float(value)),
+                Err(_) => Err(ProgramError::InvalidOperation),
+            }
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    }
+}
+
+fn words(a : Datatype) -> Result<Datatype, ProgramError> {
+    let result = match a {
+        Datatype::String(value) => {
+            let words : Vec<Datatype> = value.split(' ').map(|x| Datatype::String(x.to_string())).collect();
+            Ok(Datatype::List(words))
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    };
+    result
+}
+
 
 fn div(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
@@ -327,7 +377,8 @@ fn format_stack_item(stack_item : Datatype) -> String {
         Datatype::Float(value) => format!("{:?}", value),
         Datatype::Boolean(value) => format!("{}", if value { "True" } else { "False" }),
         Datatype::List(list) => format!("[{}]", format_list(&list)),
-        Datatype::String(value) => format!("{}", value),
+        Datatype::String(value) => format!("{:?}", value),
+        Datatype::Code(value) => format!("{:?}", value),
     }
 }
 
