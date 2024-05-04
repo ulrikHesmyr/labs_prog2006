@@ -239,11 +239,15 @@ fn divide(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
 
 fn format_list(list : &Vec<Datatype>) -> String {
     let mut list_str = String::new();
-    for item in list.iter() {
+    let length = list.len();
+    for (i, item) in list.iter().enumerate() {
         if let Datatype::List(f) = item {
             write!(list_str, "[{}]", format_list(f)).unwrap();
         } else {
-            write!(list_str, "[{}]", format_stack_item(item.clone())).unwrap();
+            write!(list_str, "{}", format_stack_item(item.clone())).unwrap();
+        }
+        if i < length - 1 {
+            write!(list_str, ",").unwrap();
         }
     }
     return list_str
