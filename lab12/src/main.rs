@@ -8,7 +8,6 @@ enum ProgramError {
     IncompleteString,
     StackEmpty,
     ExpectedBool,
-    DivisionByZero,
     IncompleteQuotation,
 }
 
@@ -25,6 +24,11 @@ enum Datatype {
 fn main() {
     loop { 
         let result = interpreter(&read_line());
+        println!("Result: {:?}", result);
+        match result {
+            Ok(value) => println!("{}", format_stack_item(value)),
+            Err(e) => println!("Error: {:?}", e),
+        }
         println!("Running tests...");
         tests();
     }
@@ -37,6 +41,11 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
 
     while !tokens.is_empty() {
         let token = tokens.pop().unwrap();
+
+        if token.trim() == "" {
+            return Ok(Datatype::String(String::new()));
+        }
+
         match datatype(token, &mut tokens) {
             Some(value) => stack.push(value),
             None => {
@@ -82,6 +91,8 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
                     "exec" => Some(exec(stack.pop().unwrap())),
                     "map" => Some(map(stack.pop().unwrap(), &mut tokens)),
                     "if" => Some(if_(stack.pop().unwrap(), &mut tokens)),
+                    "each" => Some(each(stack.pop().unwrap(), &mut tokens, &mut stack)),
+                    "foldl" => Some(foldl(stack.pop().unwrap(), stack.pop().unwrap(), &mut tokens)),
 
 
 
@@ -104,25 +115,96 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
     if stack.len() == 0 {
         println!("Stack does not have a single value at the end");
         return Err(ProgramError::StackEmpty)
+    } else if stack.len() == 1 {
+        let last_element = stack.pop().unwrap();
+        match last_element {
+            Datatype::Code(code) => {
+                match interpreter(&code) {
+                    Ok(value) => return Ok(value),
+                    Err(e) => return Err(e),
+                }
+            },
+            _ => return Ok(last_element)
+        }
+        //return Ok(stack.pop().unwrap());
     } else {
-        let top_element = match stack.pop().unwrap(){
-            Datatype::Code(code) => return Ok(interpreter(&code).unwrap()),
-            value => value,
+        
+        let mut final_evaluation = String::new();
+        for item in stack {
+            final_evaluation.push_str(&format!(" {}",format_stack_item(item).as_str()));
+        }
+        println!("Final evaluation: {}", final_evaluation);
+        return match interpreter(&final_evaluation) {
+            Ok(value) => Ok(value),
+            Err(e) => Err(e),
         };
-        return Ok(top_element)
     }
+    
+}
+
+fn foldl(init_accumulator : Datatype, list : Datatype, tokens : &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+    let mut final_accumulation = init_accumulator;
+    let token = tokens.pop().unwrap();
+    let operation = match datatype(token, tokens) {
+        Some(dt) => format_stack_item(dt),
+        None => token.to_string() //Operator,
+    };
+
+    let iterable_list = match list {
+        Datatype::List(list) => list,
+        _ => return Err(ProgramError::InvalidOperation),
+    };
+    for item in iterable_list {
+        let code_to_execute = format!("{} {} {}", format_stack_item(final_accumulation), format_stack_item(item), operation);
+        
+        match interpreter(&code_to_execute){
+            Ok(new_acc_value) => final_accumulation = new_acc_value,
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(final_accumulation)
+}
+
+fn each(token : Datatype, tokens : &mut Vec<&str>, stack : &mut Vec<Datatype>) -> Result<Datatype, ProgramError> {
+    
+    let old_list = match token {
+        Datatype::List(list) => list,
+        _ => return Err(ProgramError::InvalidOperation),
+    };
+
+    //Call on map and get a list with elements
+    let new_list = match map(Datatype::List(old_list), tokens) {
+        Ok(Datatype::List(list)) => list,
+        _ => return Err(ProgramError::InvalidOperation),
+    };
+
+    //Iterate over this list and push the element onto the stack 
+    for (i, item) in new_list.iter().enumerate() {
+        
+        if i != new_list.len() - 1 {
+            stack.push(item.clone());
+        } else {
+            return Ok(item.clone())
+        }
+    }
+
+    return Err(ProgramError::InvalidOperation)
     
 }
 
 fn if_(predicate : Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>{
     
-    let true_expression = match datatype(tokens.pop().unwrap(), tokens){
+    let first = tokens.pop().unwrap();
+    let second = tokens.pop().unwrap();
+
+    let true_expression = match datatype(first, tokens){
         Some(dt) => dt,
-        None => return Err(ProgramError::IncompleteQuotation),
+        None => Datatype::Code(first.to_string()),
     };
-    let false_expression = match datatype(tokens.pop().unwrap(), tokens){
+    let false_expression = match datatype(second, tokens){
         Some(dt) => dt,
-        None => return Err(ProgramError::IncompleteQuotation),
+        None => Datatype::Code(second.to_string()),
     };
 
     let expression : Datatype;
@@ -150,10 +232,13 @@ fn exec(a : Datatype) -> Result<Datatype, ProgramError> {
 }
 
 fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
-    let code_block = match datatype(tokens.pop().ok_or(ProgramError::InvalidOperation)?, tokens) {
+    let operation = tokens.pop().ok_or(ProgramError::InvalidOperation)?;
+    let code_block = match datatype(operation, tokens) {
         Some(Datatype::Code(code)) => code,
-        _ => return Err(ProgramError::InvalidOperation),
+        _ => operation.to_string(),
     };
+
+    println!("Code block in map: {}", code_block);
 
     let new_list = match list {
         Datatype::List(list) => {
@@ -161,6 +246,7 @@ fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>
             for item in list {
                 let formatted_item = format_stack_item(item);
                 let formatted_code = format!("{} {}", formatted_item, &code_block);
+                println!("Formatted code: {}", formatted_code);
                 let result = interpreter(&formatted_code)?;
                 match result {
                     Datatype::Code(code_exp) => {
@@ -192,7 +278,7 @@ fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
     if token == "{" {
         let code_result = match code(tokens) {
             Ok(value) => value,
-            Err(e) => return None//return format!("{:?}", e),
+            Err(_) => return None
         };
         return Some(code_result);
 
@@ -200,7 +286,7 @@ fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
     } else if token == "[" {
         let list_result = match list(token, tokens) {
             Ok(value) => value,
-            Err(e) => return None//return format!("{:?}", e),
+            Err(_) => return None
         };
         return Some(list_result);
 
@@ -221,7 +307,7 @@ fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
     } else if token == "\"" {
         let string_result = match string(tokens) {
             Ok(value) => value,
-            Err(e) => return None //return format!("{:?}", e),
+            Err(_) => return None 
         };
         return Some(string_result);
     }
@@ -545,7 +631,7 @@ fn format_stack_item(stack_item : Datatype) -> String {
         Datatype::Float(value) => format!("{:?}", value),
         Datatype::Boolean(value) => format!("{}", if value { "True" } else { "False" }),
         Datatype::List(list) => format!("[{}]", format_list(&list)),
-        Datatype::String(value) => format!("{:?}", value),
+        Datatype::String(value) => format!("\" {} \"", value),
         Datatype::Code(value) => format!("{}", value),
     }
 }
@@ -620,11 +706,11 @@ fn tests() {
     // String parsing
     ("\" 12 \" parseInteger".to_string(), "12".to_string()),
     ("\" 12.34 \" parseFloat".to_string(), "12.34".to_string()),
-    ("\" adam bob charlie \" words".to_string(), "[\"adam\",\"bob\",\"charlie\"]".to_string()),
+    ("\" adam bob charlie \" words".to_string(), "[\" adam \",\" bob \",\" charlie \"]".to_string()),
 
     // Lists
     ("[ 1 2 3 ]".to_string(), "[1,2,3]".to_string()),
-    ("[ 1 \" bob \" ]".to_string(), "[1,\"bob\"]".to_string()),
+    ("[ 1 \" bob \" ]".to_string(), "[1,\" bob \"]".to_string()),
     ("[ 1 2 ] empty".to_string(), "False".to_string()),
     ("[ ] empty".to_string(), "True".to_string()),
     ("[ 1 2 3 ] head".to_string(), "1".to_string()),
@@ -638,11 +724,18 @@ fn tests() {
 
     
     // If statements
-    ("True if { 20 } { }".to_string(), "20".to_string()),
-    ("True if { 20 10 + } { 3 }".to_string(), "30".to_string()),
-    ("10 5 5 == if { 10 + } { 100 + }".to_string(), "20".to_string()),
+    ("True if { 20 } { }".to_string(), "20".to_string()), //56
+    ("True if { 20 10 + } { 3 }".to_string(), "30".to_string()), //57
+    ("10 5 5 == if { 10 + } { 100 + }".to_string(), "20".to_string()), //58
     ("False if { } { 45 }".to_string(), "45".to_string()),
-    ("True if { False if { 50 } { 100 } } { 30 }".to_string(), "100".to_string()),
+    ("True if { False if { 50 } { 100 } } { 30 }".to_string(), "100".to_string()), //60
+
+    // If without quotation
+    ("True if 20 { }".to_string(), "20".to_string()), //61
+    ("True if { 20 10 + } 3".to_string(), "30".to_string()),
+    ("10 10 5 5 == if + { 100 + }".to_string(), "20".to_string()),
+    ("False if { } 45".to_string(), "45".to_string()),
+    ("True if { False if 50 100 } 30".to_string(), "100".to_string()),
 
     // List quotations
     ("[ 1 2 3 ] map { 10 * }".to_string(), "[10,20,30]".to_string()),
@@ -656,6 +749,14 @@ fn tests() {
     ("[ 1 2 3 4 ] 0 foldl +".to_string(), "10".to_string()),
     ("[ 2 5 ] 20 foldl div".to_string(), "2".to_string()),
 
+    
+    // Quotations
+    ("{ 20 10 + } exec".to_string(), "30".to_string()),
+    ("10 { 20 + } exec".to_string(), "30".to_string()),
+    ("10 20 { + } exec".to_string(), "30".to_string()),
+    ("{ { 10 20 + } exec } exec".to_string(), "30".to_string()),
+    ("{ { 10 20 + } exec 20 + } exec".to_string(), "50".to_string()),
+
     // Assignments
     ("age".to_string(), "age".to_string()),
     ("age 10 := age".to_string(), "10".to_string()),
@@ -666,21 +767,6 @@ fn tests() {
     // Functions
     ("inc { 1 + } fun 1 inc".to_string(), "2".to_string()),
     ("mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10".to_string(), "110".to_string()),
-
-    // Quotations
-    ("{ 20 10 + } exec".to_string(), "30".to_string()),
-    ("10 { 20 + } exec".to_string(), "30".to_string()),
-    ("10 20 { + } exec".to_string(), "30".to_string()),
-    ("{ { 10 20 + } exec } exec".to_string(), "30".to_string()),
-    ("{ { 10 20 + } exec 20 + } exec".to_string(), "50".to_string()),
-
-
-    // If without quotation
-    ("True if 20 {}".to_string(), "20".to_string()),
-    ("True if { 20 10 + } 3".to_string(), "30".to_string()),
-    ("10 10 5 5 == if + { 100 + }".to_string(), "20".to_string()),
-    ("False if { } 45".to_string(), "45".to_string()),
-    ("True if { False if 50 100 } 30".to_string(), "100".to_string()),
 
     // Times
     ("1 times { 100 50 + }".to_string(), "150".to_string()),
@@ -698,7 +784,7 @@ fn tests() {
 
     
     for (index, (input, output)) in testings.iter().enumerate() {
-        println!("\n\nTest {} passed", index);
+        println!("\nTest {} passed\n\n", index);
         let result = match interpreter(&input){
             Ok(value) => format_stack_item(value),
             Err(e) => format!("{:?}", e),

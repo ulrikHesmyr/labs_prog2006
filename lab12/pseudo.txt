@@ -21,5 +21,47 @@ Todo:
         },
         _ => Err(ProgramError::ExpectedBool)
     }
+},
+
+list map code
+
+let program_variables = HashMap<String, Datatype>
+
+"map" => {
+
 }
 
+fn each(token : &str, tokens : Vec<&str>, stack : Vec<Datatype>) -> Result<Datatype, ProgramError> {
+    //Get the list out of token
+
+    //Call on map and get a list with elements
+
+    //Iterate over this list and push the element onto the stack 
+
+}
+
+"foldl" => {
+
+    
+
+    //
+
+    //Returning accumulator as Int
+}
+
+fn foldl(init_accumulator : Datatype, list : Datatype) {
+    let mut final_accumulation = init_accumulator;
+    let operation = match datatype(token) {
+        Some(dt) => format_stack_item(dt),
+        None => token //Operator,
+    };
+
+    for item in list {
+        match interpreter(&format!("{} {} {}", format_stack_item(item), format_stack_item(final_accumulation), operation)){
+            Ok(new_acc_value) => final_accumulation = new_acc_value,
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(Datatype::Int(final_accumulation))
+}
