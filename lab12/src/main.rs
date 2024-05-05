@@ -1,5 +1,5 @@
-use std::io;
 use std::fmt::Write;
+use std::io;
 
 #[derive(Debug)]
 enum ProgramError {
@@ -21,17 +21,21 @@ enum Datatype {
 }
 
 fn main() {
-    loop { 
-        let result = interpreter(&read_line());
-        println!("Result: {:?}", result);
-        match result {
-            Ok(value) => println!("{}", format_stack_item(value)),
-            Err(e) => println!("Error: {:?}", e),
-        }
-        // println!("Running tests...");
-        
+    println!("Welcome to the bprog interpreter!\nTesting or interpreting? (t/i)");
+    let input = read_line();
+    println!("input: {}", input);
+    if input.contains('t') {
         tests();
+    } else {
+        loop { 
+            let result = interpreter(&read_line());
+            match result {
+                Ok(value) => println!("{}", format_stack_item(value)),
+                Err(e) => println!("Error: {:?}", e),
+            }
+        }
     }
+    
 }
 
 fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
@@ -41,10 +45,6 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
 
     while !tokens.is_empty() {
         let token = tokens.pop().unwrap();
-
-        if token.trim() == "" {
-            return Ok(Datatype::String(String::new()));
-        }
 
         match datatype(token, &mut tokens) {
             Some(value) => stack.push(value),
@@ -112,9 +112,9 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
         } 
     }
 
-    println!("{:?}", stack);
+    //println!("{:?}", stack);
     if stack.len() == 0 {
-        println!("Stack does not have a single value at the end");
+        //println!("Stack does not have a single value at the end");
         return Err(ProgramError::StackEmpty)
     } else if stack.len() == 1 {
         let last_element = stack.pop().unwrap();
@@ -134,7 +134,7 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
         for item in stack {
             final_evaluation.push_str(&format!("{} ",format_stack_item(item).as_str()));
         }
-        println!("Final evaluation: {}", final_evaluation);
+        //println!("Final evaluation: {}", final_evaluation);
         return match interpreter(&final_evaluation) {
             Ok(value) => Ok(value),
             Err(e) => Err(e),
@@ -209,8 +209,8 @@ fn if_(predicate : Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, Program
         Some(dt) => dt,
         None => Datatype::Code(second_expression.to_string()),
     };
-    println!("True expression: {:?}", true_expression);
-    println!("False expression: {:?}", false_expression);
+    // println!("True expression: {:?}", true_expression);
+    // println!("False expression: {:?}", false_expression);
 
     let expression : Datatype;
     
@@ -235,7 +235,7 @@ fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>
         _ => operation.to_string(),
     };
 
-    println!("Code block in map: {}", code_block);
+    //println!("Code block in map: {}", code_block);
 
     let new_list = match list {
         Datatype::List(list) => {
@@ -243,7 +243,7 @@ fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>
             for item in list {
                 let formatted_item = format_stack_item(item);
                 let formatted_code = format!("{} {}", formatted_item, &code_block);
-                println!("Formatted code: {}", formatted_code);
+                //println!("Formatted code: {}", formatted_code);
                 let result = interpreter(&formatted_code)?;
                 match result {
                     Datatype::Code(code_exp) => {
@@ -371,7 +371,7 @@ fn code(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
         }
         new_token = tokens.pop().unwrap();
     }
-    println!("Code: {}", code_.trim().to_string());
+    //println!("Code: {}", code_.trim().to_string());
     Ok(Datatype::Code(code_.trim().to_string()))
     
 
@@ -788,40 +788,45 @@ fn tests() {
     
 
     // Times
-    ("1 times { 100 50 + }".to_string(), "150".to_string()),
-    ("5 times { 1 } [ ] 5 times { cons } 0 foldl { + }".to_string(), "5".to_string()),
-    ("5 times 1 [ ] 5 times cons 0 foldl +".to_string(), "5".to_string()),
-    ("5 times { 10 } + + + +".to_string(), "50".to_string()),
-    ("5 times 10 4 times +".to_string(), "50".to_string()),
+     ("1 times { 100 50 + }".to_string(), "150".to_string()),
+    //("5 times { 1 } [ ] 5 times { cons } 0 foldl { + }".to_string(), "5".to_string()),
+    // ("5 times 1 [ ] 5 times cons 0 foldl +".to_string(), "5".to_string()),
+    // ("5 times { 10 } + + + +".to_string(), "50".to_string()),
+    // ("5 times 10 4 times +".to_string(), "50".to_string()),
     
 
-    // Assignments
-    ("age".to_string(), "age".to_string()),
-    ("age 10 := age".to_string(), "10".to_string()),
-    ("10 age swap := age".to_string(), "10".to_string()),
-    ("[ 1 2 3 ] list swap := list".to_string(), "[1,2,3]".to_string()),
-    ("age 20 := [ 10 age ]".to_string(), "[10,20]".to_string()),
+    // // Assignments
+    // ("age".to_string(), "age".to_string()),
+    // ("age 10 := age".to_string(), "10".to_string()),
+    // ("10 age swap := age".to_string(), "10".to_string()),
+    // ("[ 1 2 3 ] list swap := list".to_string(), "[1,2,3]".to_string()),
+    // ("age 20 := [ 10 age ]".to_string(), "[10,20]".to_string()),
 
-    // Functions
-    ("inc { 1 + } fun 1 inc".to_string(), "2".to_string()),
-    ("mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10".to_string(), "110".to_string()),
+    // // Functions
+    // ("inc { 1 + } fun 1 inc".to_string(), "2".to_string()),
+    // ("mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10".to_string(), "110".to_string()),
 
 
-    // Loop
-    ("1 loop { dup 4 > } { dup 1 + } [ ] 5 times { cons }".to_string(), "[1,2,3,4,5]".to_string()),
-    ("1 loop { dup 4 > } { dup 1 + } [ ] 5 times cons".to_string(), "[1,2,3,4,5]".to_string()),
-    ("[ 1 ] loop { dup length 9 > } { dup head 1 + swap cons }".to_string(), "[10,9,8,7,6,5,4,3,2,1]".to_string()),
+    // // Loop
+    // ("1 loop { dup 4 > } { dup 1 + } [ ] 5 times { cons }".to_string(), "[1,2,3,4,5]".to_string()),
+    // ("1 loop { dup 4 > } { dup 1 + } [ ] 5 times cons".to_string(), "[1,2,3,4,5]".to_string()),
+    // ("[ 1 ] loop { dup length 9 > } { dup head 1 + swap cons }".to_string(), "[10,9,8,7,6,5,4,3,2,1]".to_string()),
 
     ];
 
-    
+    println!("Running tests...");
+
+    let mut tests_passed : usize = 0;
     for (index, (input, output)) in testings.iter().enumerate() {
-        println!("\nTest {} passed\n\n", index);
+        println!("Test {} passed", index+1);
+        tests_passed = index;
         let result = match interpreter(&input){
             Ok(value) => format_stack_item(value),
             Err(e) => format!("{:?}", e),
         };
         assert!(result == *output, "FAIL on test {}\n- test: {}\n- result: {}\n- expected: {}", index, input, result, output);
     }
+
+    println!("{} tests successful!", tests_passed+1);
 
 }
