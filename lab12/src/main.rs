@@ -6,8 +6,12 @@ enum ProgramError {
     InvalidOperation,
     IncompleteList,
     IncompleteString,
+    IncompleteQuotation,
     StackEmpty,
     ExpectedBool,
+    ExpectedList,
+    ExpectedNumber,
+    ExpectedString,
 }
 
 #[derive(Debug, Clone)]
@@ -23,7 +27,7 @@ enum Datatype {
 fn main() {
     println!("Welcome to the bprog interpreter!\nTesting or interpreting? (t/i)");
     let input = read_line();
-    println!("input: {}", input);
+    
     if input.contains('t') {
         tests();
     } else {
@@ -112,12 +116,14 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
         } 
     }
 
-    //println!("{:?}", stack);
+    //Handling the error case if the stack is empty
     if stack.len() == 0 {
-        //println!("Stack does not have a single value at the end");
         return Err(ProgramError::StackEmpty)
+
     } else if stack.len() == 1 {
         let last_element = stack.pop().unwrap();
+
+        //Evaluation of the last element in the stack if it is a code block, otherwise return the element
         match last_element {
             Datatype::Code(code) => {
                 match interpreter(&code) {
@@ -127,9 +133,10 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
             },
             _ => return Ok(last_element)
         }
-        //return Ok(stack.pop().unwrap());
+        
     } else {
         
+        //Final evaluation of the stack
         let mut final_evaluation = String::new();
         for item in stack {
             final_evaluation.push_str(&format!("{} ",format_stack_item(item).as_str()));
@@ -144,18 +151,26 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
 }
 
 fn foldl(init_accumulator : Datatype, list : Datatype, tokens : &mut Vec<&str>) -> Result<Datatype, ProgramError> {
-    let mut final_accumulation = init_accumulator;
+    
     let token = tokens.pop().unwrap();
     let operation = match datatype(token, tokens) {
         Some(dt) => format_stack_item(dt),
-        None => token.to_string() //Operator,
+        None => token.to_string()
     };
 
     let iterable_list = match list {
         Datatype::List(list) => list,
-        _ => return Err(ProgramError::InvalidOperation),
+        _ => return Err(ProgramError::ExpectedList),
     };
+
+    let mut final_accumulation = match init_accumulator{
+        Datatype::Int(value) => Datatype::Int(value),
+        _ => return Err(ProgramError::ExpectedNumber),
+    };
+
     for item in iterable_list {
+
+        //Does operation to the accumulated value with the list item as argument
         let code_to_execute = format!("{} {} {}", format_stack_item(final_accumulation), format_stack_item(item), operation);
         
         match interpreter(&code_to_execute){
@@ -255,7 +270,7 @@ fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>
             }
             Datatype::List(new_list)
         }
-        _ => return Err(ProgramError::InvalidOperation),
+        _ => return Err(ProgramError::ExpectedList),
     };
 
     Ok(new_list)
@@ -270,46 +285,39 @@ fn read_line() -> String {
 }
 
 fn datatype(token: &str, tokens: &mut Vec<&str>) -> Option<Datatype> {
-
-    //Datatype::Code
-    if token == "{" {
-        let code_result = match code(tokens) {
-            Ok(value) => value,
-            Err(_) => return None
-        };
-        return Some(code_result);
-
-        //Datatype::List
-    } else if token == "[" {
-        let list_result = match list(token, tokens) {
-            Ok(value) => value,
-            Err(_) => return None
-        };
-        return Some(list_result);
-
-        //Datatype::Float
-    } else if token.parse::<f64>().is_ok() && token.contains('.') {
-        return Some(Datatype::Float(token.parse::<f64>().unwrap()));
-
-        //Datatype::Int
-    } else if token.parse::<i128>().is_ok() {
-        return Some(Datatype::Int(token.parse::<i128>().unwrap()));
-
-        //Datatype::Boolean
-    } else if token == "False" || token == "True" {
-        let bool_value = token.to_ascii_lowercase();
-        return Some(Datatype::Boolean(bool_value.parse::<bool>().unwrap()));
-
-        //Datatype::String
-    } else if token == "\"" {
-        let string_result = match string(tokens) {
-            Ok(value) => value,
-            Err(_) => return None 
-        };
-        return Some(string_result);
+    match token {
+        "{" => {
+            match code(tokens) {
+                Ok(value) => Some(value),
+                Err(_) => None,
+            }
+        }
+        "[" => {
+            match list(token, tokens) {
+                Ok(value) => Some(value),
+                Err(_) => None,
+            }
+        }
+        _ if token.parse::<f64>().is_ok() && token.contains('.') => {
+            Some(Datatype::Float(token.parse::<f64>().unwrap()))
+        }
+        _ if token.parse::<i128>().is_ok() => {
+            Some(Datatype::Int(token.parse::<i128>().unwrap()))
+        }
+        "False" | "True" => {
+            let bool_value = token.to_ascii_lowercase();
+            Some(Datatype::Boolean(bool_value.parse::<bool>().unwrap()))
+        }
+        "\"" => {
+            match string(tokens) {
+                Ok(value) => Some(value),
+                Err(_) => None,
+            }
+        }
+        _ => None,
     }
-    return None
 }
+
 
 fn list(token: &str, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
     let mut list_ : Vec<Datatype> = Vec::new();
@@ -367,7 +375,7 @@ fn code(tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
         }
 
         if tokens.is_empty() {
-            return Err(ProgramError::IncompleteString)
+            return Err(ProgramError::IncompleteQuotation)
         }
         new_token = tokens.pop().unwrap();
     }
@@ -476,7 +484,7 @@ fn words(a : Datatype) -> Result<Datatype, ProgramError> {
             let words : Vec<Datatype> = value.split(' ').map(|x| Datatype::String(x.to_string())).collect();
             Ok(Datatype::List(words))
         },
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedString),
     };
     result
 }
@@ -488,7 +496,7 @@ fn div(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
         (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Int((b as i128) / (a as i128))),
         (Datatype::Int(a), Datatype::Float(b)) => Ok(Datatype::Int((b as i128) / a as i128)),
         (Datatype::Float(a), Datatype::Int(b)) => Ok(Datatype::Int((b as i128) / (a as i128))),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedNumber),
     };
     result
 }
@@ -548,15 +556,17 @@ fn less_than(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
         (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Boolean(b < a)),
         (Datatype::Int(a), Datatype::Float(b)) => Ok(Datatype::Boolean(b < a as f64)),
         (Datatype::Float(a), Datatype::Int(b)) => Ok(Datatype::Boolean((b as f64) < a)),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedNumber),
     };
     result
 }
 
+
+
 fn and(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
         (Datatype::Boolean(a), Datatype::Boolean(b)) => Ok(Datatype::Boolean(a && b)),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedBool),
     };
     result
 }
@@ -564,7 +574,7 @@ fn and(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
 fn or(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
         (Datatype::Boolean(a), Datatype::Boolean(b)) => Ok(Datatype::Boolean(a || b)),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedBool),
     };
     result
 }
@@ -583,7 +593,7 @@ fn add(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
         (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Float(a + b)),
         (Datatype::Int(a), Datatype::Float(b)) => Ok(Datatype::Float(a as f64 + b)),
         (Datatype::Float(a), Datatype::Int(b)) => Ok(Datatype::Float(a + b as f64)),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedNumber),
     };
     result
 }
@@ -594,7 +604,7 @@ fn subtract(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
         (Datatype::Float(a), Datatype::Float(b)) => Ok(Datatype::Float(b - a)),
         (Datatype::Float(a), Datatype::Int(b)) => Ok(Datatype::Float(b as f64 - a)),
         (Datatype::Int(a), Datatype::Float(b)) => Ok(Datatype::Float(b - a as f64)),
-        _ => Err(ProgramError::InvalidOperation),
+        _ => Err(ProgramError::ExpectedNumber),
     };
     result
 }
@@ -827,6 +837,6 @@ fn tests() {
         assert!(result == *output, "FAIL on test {}\n- test: {}\n- result: {}\n- expected: {}", index, input, result, output);
     }
 
-    println!("{} tests successful!", tests_passed+1);
+    println!("{} successful tests!", tests_passed+1);
 
 }
