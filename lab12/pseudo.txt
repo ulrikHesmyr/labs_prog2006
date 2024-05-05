@@ -1,4 +1,5 @@
 Todo:
+- "times" => {}
 - Endre error meldinger til slutt
 - Rydde i koden
 
@@ -49,7 +50,7 @@ fn each(token : &str, tokens : Vec<&str>, stack : Vec<Datatype>) -> Result<Datat
     //Returning accumulator as Int
 }
 
-fn foldl(init_accumulator : Datatype, list : Datatype) {
+fn foldl(init_accumulator : Datatype, list : Datatype) -> Result<Datatype, ProgramError> {
     let mut final_accumulation = init_accumulator;
     let operation = match datatype(token) {
         Some(dt) => format_stack_item(dt),

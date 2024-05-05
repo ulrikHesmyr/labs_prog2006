@@ -195,17 +195,21 @@ fn each(token : Datatype, tokens : &mut Vec<&str>, stack : &mut Vec<Datatype>) -
 
 fn if_(predicate : Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError>{
     
-    let first = tokens.pop().unwrap();
-    let second = tokens.pop().unwrap();
+    let first_expression = tokens.pop().unwrap();
 
-    let true_expression = match datatype(first, tokens){
+    let true_expression = match datatype(first_expression, tokens){
         Some(dt) => dt,
-        None => Datatype::Code(first.to_string()),
+        None => Datatype::Code(first_expression.to_string()),
     };
-    let false_expression = match datatype(second, tokens){
+
+    let second_expression = tokens.pop().unwrap();
+
+    let false_expression = match datatype(second_expression, tokens){
         Some(dt) => dt,
-        None => Datatype::Code(second.to_string()),
+        None => Datatype::Code(second_expression.to_string()),
     };
+    println!("True expression: {:?}", true_expression);
+    println!("False expression: {:?}", false_expression);
 
     let expression : Datatype;
     
@@ -742,12 +746,12 @@ fn tests() {
     ("[ 1 2 3 ] map { 1 + }".to_string(), "[2,3,4]".to_string()),
     ("[ 1 2 3 4 ] map { dup 2 > if { 10 * } { 2 * } }".to_string(), "[2,4,30,40]".to_string()),
     ("[ 1 2 3 4 ] each { 10 * } + + +".to_string(), "100".to_string()),
-    ("[ 1 2 3 4 ] 0 foldl { + }".to_string(), "10".to_string()),
+    ("[ 1 2 3 4 ] 0 foldl { + }".to_string(), "10".to_string()), //70
     ("[ 2 5 ] 20 foldl { div }".to_string(), "2".to_string()),
-    ("[ \" 1 \" \" 2 \" \" 3 \" ] each { parseInteger } [ ] cons cons cons".to_string(), "[1,2,3]".to_string()),
-    ("[ \" 1 \" \" 2 \" \" 3 \" ] each parseInteger [ ] 3 times cons".to_string(), "[1,2,3]".to_string()),
+    ("[ \" 1 \" \" 2 \" \" 3 \" ] each { parseInteger } [ ] cons cons cons".to_string(), "[1,2,3]".to_string()), //72
     ("[ 1 2 3 4 ] 0 foldl +".to_string(), "10".to_string()),
     ("[ 2 5 ] 20 foldl div".to_string(), "2".to_string()),
+    ("[ \" 1 \" \" 2 \" \" 3 \" ] each parseInteger [ ] 3 times cons".to_string(), "[1,2,3]".to_string()),
 
     
     // Quotations
