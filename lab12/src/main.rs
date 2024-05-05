@@ -119,7 +119,6 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
     //Handling the error case if the stack is empty
     if stack.len() == 0 {
         return Err(ProgramError::StackEmpty)
-
     } else if stack.len() == 1 {
         let last_element = stack.pop().unwrap();
 
