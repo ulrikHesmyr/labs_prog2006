@@ -66,3 +66,27 @@ fn foldl(init_accumulator : Datatype, list : Datatype) -> Result<Datatype, Progr
 
     Ok(Datatype::Int(final_accumulation))
 }
+
+num --
+
+
+"times" => {
+    
+
+
+
+}
+
+fn times(number : Datatype, tokens : &mut Vec<&str>) -> Result<Datatype, ProgramError> {
+    let token = tokens.pop().unwrap();
+    let evaluated_codeblock = match datatype(token, tokens) {
+        Some(Datatype::Code(code)) => match interpreter(code) => {
+            Ok(dt) => dt,
+            Err(e) => return Err(e),
+        },
+        Some(dt) => dt,
+        None => Datatype::String(token.to_string()),
+    };
+
+    return multiply(number, evaluated_codeblock) 
+}

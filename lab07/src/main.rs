@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 fn main() {
     test_acronym();
-    //
+    
     test_reverse();
-//
+
     test_find_most_frequent_bird_count();
     test_find_most_frequent_bird(find_most_frequent_bird);
     test_find_most_frequent_bird(find_most_frequent_bird_no_order);
-//
+
     test_find_most_frequent_bird_with_order();
     test_find_most_frequent_bird_no_order();
 

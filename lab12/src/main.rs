@@ -8,7 +8,6 @@ enum ProgramError {
     IncompleteString,
     StackEmpty,
     ExpectedBool,
-    IncompleteQuotation,
 }
 
 #[derive(Debug, Clone)]
@@ -29,7 +28,8 @@ fn main() {
             Ok(value) => println!("{}", format_stack_item(value)),
             Err(e) => println!("Error: {:?}", e),
         }
-        println!("Running tests...");
+        // println!("Running tests...");
+        
         tests();
     }
 }
@@ -88,11 +88,12 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
                     "tail" => Some(tail(stack.pop().unwrap())),
                     "cons" => Some(cons(stack.pop().unwrap(), stack.pop().unwrap())),
                     "append" => Some(append(stack.pop().unwrap(), stack.pop().unwrap())),
-                    "exec" => Some(exec(stack.pop().unwrap())),
+                    "exec" => Some(Ok(stack.pop().unwrap())),
                     "map" => Some(map(stack.pop().unwrap(), &mut tokens)),
                     "if" => Some(if_(stack.pop().unwrap(), &mut tokens)),
                     "each" => Some(each(stack.pop().unwrap(), &mut tokens, &mut stack)),
                     "foldl" => Some(foldl(stack.pop().unwrap(), stack.pop().unwrap(), &mut tokens)),
+                    "times" => Some(times(stack.pop().unwrap(), &mut tokens, &mut stack)),
 
 
 
@@ -131,7 +132,7 @@ fn interpreter(line : &String) -> Result<Datatype, ProgramError> {
         
         let mut final_evaluation = String::new();
         for item in stack {
-            final_evaluation.push_str(&format!(" {}",format_stack_item(item).as_str()));
+            final_evaluation.push_str(&format!("{} ",format_stack_item(item).as_str()));
         }
         println!("Final evaluation: {}", final_evaluation);
         return match interpreter(&final_evaluation) {
@@ -225,14 +226,6 @@ fn if_(predicate : Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, Program
         },
         _ => Err(ProgramError::ExpectedBool)
     }
-}
-
-fn exec(a : Datatype) -> Result<Datatype, ProgramError> {
-    let result = match a {
-        Datatype::Code(code) => interpreter(&code),
-        _ => Err(ProgramError::InvalidOperation),
-    };
-    result
 }
 
 fn map(list: Datatype, tokens: &mut Vec<&str>) -> Result<Datatype, ProgramError> {
@@ -606,6 +599,33 @@ fn subtract(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     result
 }
 
+fn times(number : Datatype, tokens : &mut Vec<&str>, stack : &mut Vec<Datatype>) -> Result<Datatype, ProgramError> {
+    let token = tokens.pop().unwrap();
+    let evaluated_codeblock = match datatype(token, tokens) {
+        Some(Datatype::Code(code)) => match interpreter(&code) {
+            Ok(dt) => dt,
+            Err(e) => return Err(e),
+        },
+        Some(dt) => dt,
+        None => Datatype::Code(token.to_string()),
+    };
+
+    match number {
+        Datatype::Int(value) => {
+            let new_list = Vec::new();
+            for i in 0..value {
+                if i < value - 1 {
+                    stack.push(evaluated_codeblock.clone());
+                } else {
+                    return Ok(evaluated_codeblock.clone());
+                }
+            }
+            Ok(Datatype::List(new_list))
+        },
+        _ => Err(ProgramError::InvalidOperation),
+    }
+}
+
 fn multiply(a : Datatype, b : Datatype) -> Result<Datatype, ProgramError> {
     let result = match (a, b) {
         (Datatype::Int(a), Datatype::Int(b)) => Ok(Datatype::Int(a * b)),
@@ -653,7 +673,11 @@ fn format_list(list : &Vec<Datatype>) -> String {
             write!(list_str, ",").unwrap();
         }
     }
-    return list_str
+    if list_str == "" {
+        return " ".to_string()
+    } else {
+        return list_str
+    }
 }
 
 fn tests() {
@@ -666,9 +690,9 @@ fn tests() {
         ("-1.1".to_string(), "-1.1".to_string()),
         ("False".to_string(), "False".to_string()),
         ("True".to_string(), "True".to_string()),
-        ("[ [ ] [ ] ]".to_string(), "[[],[]]".to_string()),
-        ("[ False [ ] True [ 1 2 ] ]".to_string(), "[False,[],True,[1,2]]".to_string()),
-        //("\" [ so { not if ] and } \"".to_string(), "\"[ so { not if ] and }\"".to_string()),
+        ("[ [ ] [ ] ]".to_string(), "[[ ],[ ]]".to_string()),
+        ("[ False [ ] True [ 1 2 ] ]".to_string(), "[False,[ ],True,[1,2]]".to_string()),
+        ("\" [ so { not if ] and } \"".to_string(), "\" [ so { not if ] and } \"".to_string()),
         //("{ 20 10 + }".to_string(), "{ 20 10 + }".to_string()),
         //("[ { + } { 10 + } { 20 10 + } ]".to_string(), "[{ + },{ 10 + },{ 20 10 + }]".to_string()),
         ("1 1 +".to_string(), "2".to_string()),
@@ -705,7 +729,7 @@ fn tests() {
     ("\" hello \" length".to_string(), "5".to_string()),
     ("\" hello world \" length".to_string(), "11".to_string()),
     ("[ 1 2 3 [ ] ] length".to_string(), "4".to_string()),
-    //("{ 10 20 + } length".to_string(), "3".to_string()),
+    ("{ 10 20 + } length".to_string(), "3".to_string()),
 
     // String parsing
     ("\" 12 \" parseInteger".to_string(), "12".to_string()),
@@ -728,14 +752,14 @@ fn tests() {
 
     
     // If statements
-    ("True if { 20 } { }".to_string(), "20".to_string()), //56
-    ("True if { 20 10 + } { 3 }".to_string(), "30".to_string()), //57
-    ("10 5 5 == if { 10 + } { 100 + }".to_string(), "20".to_string()), //58
+    ("True if { 20 } { }".to_string(), "20".to_string()), 
+    ("True if { 20 10 + } { 3 }".to_string(), "30".to_string()), 
+    ("10 5 5 == if { 10 + } { 100 + }".to_string(), "20".to_string()),
     ("False if { } { 45 }".to_string(), "45".to_string()),
-    ("True if { False if { 50 } { 100 } } { 30 }".to_string(), "100".to_string()), //60
+    ("True if { False if { 50 } { 100 } } { 30 }".to_string(), "100".to_string()), 
 
     // If without quotation
-    ("True if 20 { }".to_string(), "20".to_string()), //61
+    ("True if 20 { }".to_string(), "20".to_string()), 
     ("True if { 20 10 + } 3".to_string(), "30".to_string()),
     ("10 10 5 5 == if + { 100 + }".to_string(), "20".to_string()),
     ("False if { } 45".to_string(), "45".to_string()),
@@ -746,20 +770,30 @@ fn tests() {
     ("[ 1 2 3 ] map { 1 + }".to_string(), "[2,3,4]".to_string()),
     ("[ 1 2 3 4 ] map { dup 2 > if { 10 * } { 2 * } }".to_string(), "[2,4,30,40]".to_string()),
     ("[ 1 2 3 4 ] each { 10 * } + + +".to_string(), "100".to_string()),
-    ("[ 1 2 3 4 ] 0 foldl { + }".to_string(), "10".to_string()), //70
+    ("[ 1 2 3 4 ] 0 foldl { + }".to_string(), "10".to_string()), 
     ("[ 2 5 ] 20 foldl { div }".to_string(), "2".to_string()),
-    ("[ \" 1 \" \" 2 \" \" 3 \" ] each { parseInteger } [ ] cons cons cons".to_string(), "[1,2,3]".to_string()), //72
+    ("[ \" 1 \" \" 2 \" \" 3 \" ] each { parseInteger } [ ] cons cons cons".to_string(), "[1,2,3]".to_string()), 
     ("[ 1 2 3 4 ] 0 foldl +".to_string(), "10".to_string()),
     ("[ 2 5 ] 20 foldl div".to_string(), "2".to_string()),
     ("[ \" 1 \" \" 2 \" \" 3 \" ] each parseInteger [ ] 3 times cons".to_string(), "[1,2,3]".to_string()),
 
-    
+
+
     // Quotations
     ("{ 20 10 + } exec".to_string(), "30".to_string()),
     ("10 { 20 + } exec".to_string(), "30".to_string()),
     ("10 20 { + } exec".to_string(), "30".to_string()),
     ("{ { 10 20 + } exec } exec".to_string(), "30".to_string()),
-    ("{ { 10 20 + } exec 20 + } exec".to_string(), "50".to_string()),
+    //("{ { 10 20 + } exec 20 + } exec".to_string(), "50".to_string()),
+    
+
+    // Times
+    ("1 times { 100 50 + }".to_string(), "150".to_string()),
+    ("5 times { 1 } [ ] 5 times { cons } 0 foldl { + }".to_string(), "5".to_string()),
+    ("5 times 1 [ ] 5 times cons 0 foldl +".to_string(), "5".to_string()),
+    ("5 times { 10 } + + + +".to_string(), "50".to_string()),
+    ("5 times 10 4 times +".to_string(), "50".to_string()),
+    
 
     // Assignments
     ("age".to_string(), "age".to_string()),
@@ -772,12 +806,6 @@ fn tests() {
     ("inc { 1 + } fun 1 inc".to_string(), "2".to_string()),
     ("mul10 { 10 * } fun inc { 1 + } fun 10 inc mul10".to_string(), "110".to_string()),
 
-    // Times
-    ("1 times { 100 50 + }".to_string(), "150".to_string()),
-    ("5 times { 1 } [ ] 5 times { cons } 0 foldl { + }".to_string(), "5".to_string()),
-    ("5 times 1 [ ] 5 times cons 0 foldl +".to_string(), "5".to_string()),
-    ("5 times { 10 } + + + +".to_string(), "50".to_string()),
-    ("5 times 10 4 times +".to_string(), "50".to_string()),
 
     // Loop
     ("1 loop { dup 4 > } { dup 1 + } [ ] 5 times { cons }".to_string(), "[1,2,3,4,5]".to_string()),

@@ -14,7 +14,7 @@ fn main(){
         let length = inscription.len();	
         let mut digits : Vec<char> = Vec::new(); //First and last will be sat together to the 2-digit value
 
-	    'letter_: for (index, letter) in inscription.chars().enumerate() {
+	    for (index, letter) in inscription.chars().enumerate() {
 
             //Checks whether current letter is digit, otherwise we check if it is a letter what could be a potential digit
 	    	if letter.is_digit(10){
@@ -27,7 +27,7 @@ fn main(){
 	    				Ok(digit) => {
 	    					digits.push(digit);
 	    				}
-	    				Err(_) => continue 'letter_,
+	    				Err(_) => continue,
 	    			}
 	    		}
             
